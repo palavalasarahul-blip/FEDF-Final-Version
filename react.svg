@@ -1,0 +1,93 @@
+import { useState } from 'react'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import './App.css'
+import Sidebar from './Sidebar.jsx'
+import Dashboard from './Dashboard.jsx'
+import LoginPage from './LoginPage.jsx'
+import RegisterPage from './RegisterPage.jsx'
+import RoomManagement from './RoomManagement.jsx'
+import TeacherManagement from './TeacherManagement.jsx'
+import SubjectManagement from './SubjectManagement.jsx'
+import TeacherAvailability from './TeacherAvailability.jsx'
+import TimetableBuilder from './TimetableBuilder.jsx'
+import StudentDashboard from './StudentDashboard.jsx'
+import Reports from './Reports.jsx'
+import ProfilePage from './ProfilePage.jsx'
+import NotificationCenter from './NotificationCenter.jsx'
+import { NotificationProvider } from './NotificationContext.jsx'
+
+function App() {
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('timetable-current-user')) || null
+    } catch {
+      return null
+    }
+  })
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    () => localStorage.getItem('timetable-authenticated') === 'true' && Boolean(localStorage.getItem('timetable-current-user')),
+  )
+
+  function handleLogin(user) {
+    localStorage.setItem('timetable-authenticated', 'true')
+    localStorage.setItem('timetable-current-user', JSON.stringify(user))
+    setCurrentUser(user)
+    setIsAuthenticated(true)
+  }
+
+  function handleLogout() {
+    localStorage.removeItem('timetable-authenticated')
+    localStorage.removeItem('timetable-current-user')
+    setCurrentUser(null)
+    setIsAuthenticated(false)
+  }
+
+  const homePath = currentUser?.role === 'Student' ? '/student' : '/dashboard'
+
+  return (
+    <NotificationProvider>
+      <BrowserRouter>
+        {isAuthenticated ? (
+          <div className="app-shell">
+            <Sidebar onLogout={handleLogout} currentUser={currentUser} />
+            <main className="main-content">
+              <Routes>
+                <Route path="/" element={<Navigate to={homePath} replace />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                {currentUser?.role === 'Admin' ? (
+                  <>
+                    <Route path="/rooms" element={<RoomManagement />} />
+                    <Route path="/teachers" element={<TeacherManagement />} />
+                    <Route path="/subjects" element={<SubjectManagement />} />
+                    <Route path="/builder" element={<TimetableBuilder />} />
+                    <Route path="/reports" element={<Reports />} />
+                  </>
+                ) : null}
+                {currentUser?.role === 'Admin' || currentUser?.role === 'Teacher' ? (
+                  <Route path="/availability" element={<TeacherAvailability />} />
+                ) : null}
+                <Route path="/student" element={<StudentDashboard />} />
+                <Route path="/profile" element={<ProfilePage currentUser={currentUser} />} />
+                <Route path="/notifications" element={<NotificationCenter fullPage />} />
+                <Route path="/login" element={<Navigate to={homePath} replace />} />
+                <Route path="/register" element={<Navigate to={homePath} replace />} />
+                <Route path="*" element={<Navigate to={homePath} replace />} />
+              </Routes>
+            </main>
+          </div>
+        ) : (
+          <main className="auth-shell">
+            <Routes>
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </main>
+        )}
+      </BrowserRouter>
+    </NotificationProvider>
+  )
+}
+
+export default App
